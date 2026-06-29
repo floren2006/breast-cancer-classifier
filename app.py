@@ -136,7 +136,6 @@ else:
 
 # ─── Sidebar ──────────────────────────────────────────────────
 with st.sidebar:
-    st.image("https://i.imgur.com/placeholder.png", width=0)  # spacer
     st.markdown("## 🔬 Breast Cancer Classifier")
     st.markdown("""
 **Universitas AMIKOM Yogyakarta — 2026**
