@@ -162,31 +162,56 @@ if predict_btn:
     }).background_gradient(cmap='RdYlGn_r', subset=['Pasien']))
 
     # ==================== INSIGHT 1: FEATURE IMPORTANCE ====================
-    st.markdown("---")
-    with st.expander("🔍 Insight 1: Fitur Paling Berpengaruh", expanded=True):
-        coef = model.named_steps['clf'].coef_[0]
-        coef_df = pd.DataFrame({
-            'Fitur': [feature_labels[f] for f in feature_names],
-            'Koefisien': coef
-        }).sort_values('Koefisien', ascending=False)
+with st.expander("🔍 Insight 1: Fitur Paling Berpengaruh", expanded=True):
+    coef = model.named_steps['clf'].coef_[0]
+    coef_df = pd.DataFrame({
+        'Fitur': [feature_labels[f] for f in feature_names],
+        'Fitur_Asli': feature_names,
+        'Koefisien': coef
+    }).sort_values('Koefisien', ascending=False)
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        top_n = 10
-        top_coef = coef_df.head(top_n)
-        colors = ['#e74c3c' if v > 0 else '#2ecc71' for v in top_coef['Koefisien']]
-        ax.barh(top_coef['Fitur'], top_coef['Koefisien'], color=colors)
-        ax.axvline(0, color='black', linewidth=0.8)
-        ax.set_xlabel('Koefisien (Logistic Regression)')
-        ax.set_title('Top 10 Fitur dengan Pengaruh Terbesar')
-        st.pyplot(fig)
-
-        st.markdown("""
-        **Interpretasi:**
-        - Warna **merah** → semakin tinggi nilai fitur, semakin tinggi risiko Malignant.
-        - Warna **hijau** → semakin tinggi nilai fitur, semakin rendah risiko Malignant.
-        - Fitur paling berpengaruh: **Radius (Std. Error)** — peningkatan 1 unit meningkatkan odds Malignant ~14x.
-        """)
-
+    fig, ax = plt.subplots(figsize=(10, 6))
+    top_n = 10
+    top_coef = coef_df.head(top_n)
+    
+    # === Warna GRADASI ===
+    colors = []
+    # Cari nilai maksimum absolut untuk normalisasi
+    max_pos = top_coef[top_coef['Koefisien'] > 0]['Koefisien'].max() if any(top_coef['Koefisien'] > 0) else 1
+    max_neg = abs(top_coef[top_coef['Koefisien'] < 0]['Koefisien'].min()) if any(top_coef['Koefisien'] < 0) else 1
+    
+    for v in top_coef['Koefisien']:
+        if v > 0:
+            intensity = min(v / max_pos, 1.0)
+            # Merah gradasi: (1, 1-intensity, 1-intensity) -> semakin tinggi v, semakin merah
+            colors.append((1.0, 1.0 - intensity * 0.8, 1.0 - intensity * 0.8))
+        else:
+            intensity = min(abs(v) / max_neg, 1.0)
+            # Hijau gradasi: (1-intensity, 1, 1-intensity) -> semakin rendah v, semakin hijau
+            colors.append((1.0 - intensity * 0.8, 1.0, 1.0 - intensity * 0.8))
+    
+    bars = ax.barh(top_coef['Fitur'], top_coef['Koefisien'], color=colors)
+    ax.axvline(0, color='black', linewidth=0.8)
+    ax.set_xlabel('Koefisien (Logistic Regression)', fontsize=11)
+    ax.set_title('Top 10 Fitur dengan Pengaruh Terbesar', fontsize=13, fontweight='bold')
+    
+    # Tambahkan nilai koefisien di ujung bar
+    for bar, val in zip(bars, top_coef['Koefisien']):
+        offset = 0.02 * (max_pos if val > 0 else max_neg)
+        ha = 'left' if val > 0 else 'right'
+        ax.text(val + (offset if val > 0 else -offset),
+                bar.get_y() + bar.get_height()/2,
+                f'{val:.3f}', va='center', ha=ha, fontsize=9, fontweight='bold')
+    
+    st.pyplot(fig)
+    
+    st.markdown("""
+    **Interpretasi:**
+    - Warna **merah** → semakin tinggi nilai fitur, semakin **tinggi** risiko Malignant.
+    - Warna **hijau** → semakin tinggi nilai fitur, semakin **rendah** risiko Malignant.
+    - Semakin **gelap** warnanya, semakin besar pengaruh fitur tersebut.
+    - Fitur paling berpengaruh: **Radius (Std. Error)** — peningkatan 1 unit meningkatkan odds Malignant ~14x.
+    """)
     # ==================== INSIGHT 2: DECISION SPACE ====================
     with st.expander("📌 Insight 2: Ruang Keputusan (radius_mean vs texture_mean)", expanded=False):
         fig2, ax2 = plt.subplots(figsize=(8, 6))
