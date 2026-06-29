@@ -588,9 +588,12 @@ if show_ins4:
         axes[0].legend(fontsize=10)
         axes[0].grid(True, alpha=0.3)
 
-        bp = axes[1].boxplot([b_tex_box, m_tex_box],
-                              labels=['Benign','Malignant'],
-                              patch_artist=True, notch=True)
+        bp = axes[1].boxplot(
+                [b_tex_box, m_tex_box],
+                tick_labels=['Benign', 'Malignant'],
+                patch_artist=True,
+                notch=True
+            )
         bp['boxes'][0].set_facecolor('#2ecc71')
         bp['boxes'][1].set_facecolor('#e74c3c')
         axes[1].set_ylabel('texture_mean', fontsize=11)
