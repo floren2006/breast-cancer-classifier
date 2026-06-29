@@ -5,25 +5,69 @@ import joblib
 import matplotlib.pyplot as plt
 
 # ==================== KONFIGURASI HALAMAN ====================
-st.set_page_config(page_title="Klasifikasi Kanker Payudara", layout="wide")
+st.set_page_config(
+    page_title="Klasifikasi Kanker Payudara",
+    page_icon="🩺",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ==================== PAKSA TEMA TERANG ====================
+st.markdown("""
+<style>
+    .stApp {
+        background-color: #ffffff !important;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #f8f9fa !important;
+    }
+    .main > div {
+        background-color: #ffffff !important;
+    }
+    .st-emotion-cache-1y4p8pa {
+        background-color: #ffffff !important;
+    }
+    .stDataFrame {
+        background-color: #ffffff !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #262730 !important;
+    }
+    p, h1, h2, h3, h4, h5, h6, label, .stMarkdown {
+        color: #262730 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("🩺 Klasifikasi Kanker Payudara")
 st.markdown("**Model Logistic Regression** — Sistem Pendukung Diagnosis Awal")
 
 # ==================== LOAD MODEL & BENCHMARK ====================
 @st.cache_resource
 def load_model():
-    return joblib.load("best_model_logreg.pkl")
+    try:
+        return joblib.load("best_model_logreg.pkl")
+    except:
+        st.error("⚠️ File model 'best_model_logreg.pkl' tidak ditemukan.")
+        return None
 
 @st.cache_data
 def load_benchmark():
-    return joblib.load("benchmark_stats.pkl")
+    try:
+        return joblib.load("benchmark_stats.pkl")
+    except:
+        st.error("⚠️ File benchmark 'benchmark_stats.pkl' tidak ditemukan.")
+        return None
 
 model = load_model()
 bench = load_benchmark()
 
+if model is None or bench is None:
+    st.stop()
+
 mean_benign = bench['mean_benign']
 mean_malignant = bench['mean_malignant']
-feature_names = bench['feature_names']  # list nama asli dari dataset
+feature_names = bench['feature_names']
 
 # ==================== MAPPING NAMA FITUR ====================
 feature_labels = {
@@ -33,7 +77,7 @@ feature_labels = {
     'area_mean': 'Luas (Rata-rata)',
     'smoothness_mean': 'Kehalusan (Rata-rata)',
     'compactness_mean': 'Kekompakan (Rata-rata)',
-    'concavity_mean': 'Cekungan (Rata-rata)',
+    'concavity_mean': 'Konkavitas (Rata-rata)',
     'concave points_mean': 'Titik Cekung (Rata-rata)',
     'symmetry_mean': 'Simetri (Rata-rata)',
     'fractal_dimension_mean': 'Dimensi Fraktal (Rata-rata)',
@@ -43,7 +87,7 @@ feature_labels = {
     'area_se': 'Luas (Std. Error)',
     'smoothness_se': 'Kehalusan (Std. Error)',
     'compactness_se': 'Kekompakan (Std. Error)',
-    'concavity_se': 'Cekungan (Std. Error)',
+    'concavity_se': 'Konkavitas (Std. Error)',
     'concave points_se': 'Titik Cekung (Std. Error)',
     'symmetry_se': 'Simetri (Std. Error)',
     'fractal_dimension_se': 'Dimensi Fraktal (Std. Error)',
@@ -53,23 +97,18 @@ feature_labels = {
     'area_worst': 'Luas (Terburuk)',
     'smoothness_worst': 'Kehalusan (Terburuk)',
     'compactness_worst': 'Kekompakan (Terburuk)',
-    'concavity_worst': 'Cekungan (Terburuk)',
+    'concavity_worst': 'Konkavitas (Terburuk)',
     'concave points_worst': 'Titik Cekung (Terburuk)',
     'symmetry_worst': 'Simetri (Terburuk)',
     'fractal_dimension_worst': 'Dimensi Fraktal (Terburuk)',
 }
 
-# Balik mapping untuk keperluan tampilan
-label_to_feature = {v: k for k, v in feature_labels.items()}
-
 # ==================== INPUT FITUR ====================
 st.sidebar.header("📋 Input Data Pasien")
-st.sidebar.markdown("Masukkan nilai 30 fitur sel hasil FNA")
 
-# Inisialisasi dictionary input
 input_data = {}
 
-# Kelompokkan fitur berdasarkan kategori
+# Kelompokkan fitur
 mean_features = [f for f in feature_names if f.endswith('_mean')]
 se_features = [f for f in feature_names if f.endswith('_se')]
 worst_features = [f for f in feature_names if f.endswith('_worst')]
@@ -119,15 +158,12 @@ with st.sidebar.expander("🔥 Terburuk (Worst)", expanded=False):
             format="%.3f"
         )
 
-# Tombol prediksi
 predict_btn = st.sidebar.button("🔍 Prediksi", type="primary", use_container_width=True)
 
 # ==================== MAIN AREA ====================
 if predict_btn:
-    # Buat DataFrame input
     input_df = pd.DataFrame([input_data])
 
-    # Prediksi
     pred_class = model.predict(input_df)[0]
     pred_prob = model.predict_proba(input_df)[0]
 
@@ -162,65 +198,61 @@ if predict_btn:
     }).background_gradient(cmap='RdYlGn_r', subset=['Pasien']))
 
     # ==================== INSIGHT 1: FEATURE IMPORTANCE ====================
-with st.expander("🔍 Insight 1: Fitur Paling Berpengaruh", expanded=True):
-    coef = model.named_steps['clf'].coef_[0]
-    coef_df = pd.DataFrame({
-        'Fitur': [feature_labels[f] for f in feature_names],
-        'Fitur_Asli': feature_names,
-        'Koefisien': coef
-    }).sort_values('Koefisien', ascending=False)
+    st.markdown("---")
+    with st.expander("🔍 Insight 1: Fitur Paling Berpengaruh", expanded=True):
+        coef = model.named_steps['clf'].coef_[0]
+        coef_df = pd.DataFrame({
+            'Fitur': [feature_labels[f] for f in feature_names],
+            'Fitur_Asli': feature_names,
+            'Koefisien': coef
+        }).sort_values('Koefisien', ascending=False)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    top_n = 10
-    top_coef = coef_df.head(top_n)
-    
-    # === Warna GRADASI ===
-    colors = []
-    # Cari nilai maksimum absolut untuk normalisasi
-    max_pos = top_coef[top_coef['Koefisien'] > 0]['Koefisien'].max() if any(top_coef['Koefisien'] > 0) else 1
-    max_neg = abs(top_coef[top_coef['Koefisien'] < 0]['Koefisien'].min()) if any(top_coef['Koefisien'] < 0) else 1
-    
-    for v in top_coef['Koefisien']:
-        if v > 0:
-            intensity = min(v / max_pos, 1.0)
-            # Merah gradasi: (1, 1-intensity, 1-intensity) -> semakin tinggi v, semakin merah
-            colors.append((1.0, 1.0 - intensity * 0.8, 1.0 - intensity * 0.8))
-        else:
-            intensity = min(abs(v) / max_neg, 1.0)
-            # Hijau gradasi: (1-intensity, 1, 1-intensity) -> semakin rendah v, semakin hijau
-            colors.append((1.0 - intensity * 0.8, 1.0, 1.0 - intensity * 0.8))
-    
-    bars = ax.barh(top_coef['Fitur'], top_coef['Koefisien'], color=colors)
-    ax.axvline(0, color='black', linewidth=0.8)
-    ax.set_xlabel('Koefisien (Logistic Regression)', fontsize=11)
-    ax.set_title('Top 10 Fitur dengan Pengaruh Terbesar', fontsize=13, fontweight='bold')
-    
-    # Tambahkan nilai koefisien di ujung bar
-    for bar, val in zip(bars, top_coef['Koefisien']):
-        offset = 0.02 * (max_pos if val > 0 else max_neg)
-        ha = 'left' if val > 0 else 'right'
-        ax.text(val + (offset if val > 0 else -offset),
-                bar.get_y() + bar.get_height()/2,
-                f'{val:.3f}', va='center', ha=ha, fontsize=9, fontweight='bold')
-    
-    st.pyplot(fig)
-    
-    st.markdown("""
-    **Interpretasi:**
-    - Warna **merah** → semakin tinggi nilai fitur, semakin **tinggi** risiko Malignant.
-    - Warna **hijau** → semakin tinggi nilai fitur, semakin **rendah** risiko Malignant.
-    - Semakin **gelap** warnanya, semakin besar pengaruh fitur tersebut.
-    - Fitur paling berpengaruh: **Radius (Std. Error)** — peningkatan 1 unit meningkatkan odds Malignant ~14x.
-    """)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        top_n = 10
+        top_coef = coef_df.head(top_n)
+
+        # Warna gradasi
+        max_pos = top_coef[top_coef['Koefisien'] > 0]['Koefisien'].max() if any(top_coef['Koefisien'] > 0) else 1
+        max_neg = abs(top_coef[top_coef['Koefisien'] < 0]['Koefisien'].min()) if any(top_coef['Koefisien'] < 0) else 1
+
+        colors = []
+        for v in top_coef['Koefisien']:
+            if v > 0:
+                intensity = min(v / max_pos, 1.0)
+                colors.append((1.0, 1.0 - intensity * 0.8, 1.0 - intensity * 0.8))
+            else:
+                intensity = min(abs(v) / max_neg, 1.0)
+                colors.append((1.0 - intensity * 0.8, 1.0, 1.0 - intensity * 0.8))
+
+        bars = ax.barh(top_coef['Fitur'], top_coef['Koefisien'], color=colors)
+        ax.axvline(0, color='black', linewidth=0.8)
+        ax.set_xlabel('Koefisien (Logistic Regression)', fontsize=11)
+        ax.set_title('Top 10 Fitur dengan Pengaruh Terbesar', fontsize=13, fontweight='bold')
+
+        for bar, val in zip(bars, top_coef['Koefisien']):
+            offset = 0.02 * (max_pos if val > 0 else max_neg)
+            ha = 'left' if val > 0 else 'right'
+            ax.text(val + (offset if val > 0 else -offset),
+                    bar.get_y() + bar.get_height()/2,
+                    f'{val:.3f}', va='center', ha=ha, fontsize=9, fontweight='bold')
+
+        st.pyplot(fig)
+
+        st.markdown("""
+        **Interpretasi:**
+        - Warna **merah** → semakin tinggi nilai fitur, semakin **tinggi** risiko Malignant.
+        - Warna **hijau** → semakin tinggi nilai fitur, semakin **rendah** risiko Malignant.
+        - Semakin **gelap** warnanya, semakin besar pengaruh fitur tersebut.
+        - Fitur paling berpengaruh: **Radius (Std. Error)** — peningkatan 1 unit meningkatkan odds Malignant ~14x.
+        """)
+
     # ==================== INSIGHT 2: DECISION SPACE ====================
     with st.expander("📌 Insight 2: Ruang Keputusan (radius_mean vs texture_mean)", expanded=False):
         fig2, ax2 = plt.subplots(figsize=(8, 6))
-        # Titik rata-rata kelas
         ax2.scatter(mean_benign['radius_mean'], mean_benign['texture_mean'],
                     color='#2ecc71', s=120, label='Rata-rata Benign', alpha=0.8)
         ax2.scatter(mean_malignant['radius_mean'], mean_malignant['texture_mean'],
                     color='#e74c3c', s=120, label='Rata-rata Malignant', alpha=0.8)
-        # Pasien baru
         ax2.scatter(input_data['radius_mean'], input_data['texture_mean'],
                     color='gold', s=250, marker='*', label='Pasien Baru', edgecolors='black')
         ax2.set_xlabel('Radius (Rata-rata)')
@@ -293,7 +325,6 @@ with st.expander("🔍 Insight 1: Fitur Paling Berpengaruh", expanded=True):
         })
         st.table(metrics_df)
 
-        # Bar chart metrik
         fig5, ax5 = plt.subplots(figsize=(8, 4))
         ax5.bar(metrics.keys(), metrics.values(), color=['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6'])
         ax5.set_ylim(0.9, 1.0)
