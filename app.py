@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.pipeline import Pipeline
 
 # Set page config
 st.set_page_config(page_title="Klasifikasi Kanker Payudara", layout="wide")
@@ -14,13 +12,11 @@ st.markdown("**Model Logistic Regression** — Sistem Pendukung Diagnosis Awal")
 # Load model dan benchmark
 @st.cache_resource
 def load_model():
-    model = joblib.load("best_model_logreg.pkl")
-    return model
+    return joblib.load("best_model_logreg.pkl")
 
 @st.cache_data
 def load_benchmark():
-    bench = joblib.load("benchmark_stats.pkl")
-    return bench
+    return joblib.load("benchmark_stats.pkl")
 
 model = load_model()
 bench = load_benchmark()
@@ -32,9 +28,9 @@ feature_names = bench['feature_names']
 st.sidebar.header("Input Fitur Pasien")
 st.sidebar.markdown("Masukkan nilai 30 fitur sel (hasil FNA)")
 
-# Input fitur (gunakan slider dengan nilai default dari mean dataset)
+# Input fitur (gunakan slider)
 input_data = {}
-default_vals = (mean_benign + mean_malignant) / 2  # default di tengah
+default_vals = (mean_benign + mean_malignant) / 2
 
 for feat in feature_names:
     min_val = float(min(mean_benign[feat], mean_malignant[feat]) * 0.5)
@@ -51,14 +47,10 @@ for feat in feature_names:
 
 # Tombol prediksi
 if st.sidebar.button("🔍 Prediksi"):
-    # Buat DataFrame input
     input_df = pd.DataFrame([input_data])
-
-    # Prediksi
     pred_class = model.predict(input_df)[0]
     pred_prob = model.predict_proba(input_df)[0]
 
-    # Tampilkan hasil
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("📊 Hasil Prediksi")
@@ -71,7 +63,6 @@ if st.sidebar.button("🔍 Prediksi"):
 
     with col2:
         st.subheader("📈 Perbandingan dengan Rata-rata Historis")
-        # Buat tabel perbandingan untuk 5 fitur utama
         top_features = ['radius_mean', 'texture_mean', 'perimeter_mean',
                         'area_mean', 'concave points_mean']
         comp_df = pd.DataFrame({
@@ -105,9 +96,8 @@ if st.sidebar.button("🔍 Prediksi"):
     ax.set_title('Top 10 Fitur Paling Berpengaruh')
     st.pyplot(fig)
 
-    # Insight 2: Decision Space (radius_mean vs texture_mean)
+    # Insight 2: Decision Space
     st.subheader("📌 Insight 2: Decision Space (radius_mean vs texture_mean)")
-    # Kita gunakan data dari benchmark untuk membuat titik mean
     fig2, ax2 = plt.subplots(figsize=(8, 6))
     ax2.scatter(mean_benign['radius_mean'], mean_benign['texture_mean'],
                 color='#2ecc71', s=100, label='Rata-rata Benign', alpha=0.7)
@@ -121,7 +111,7 @@ if st.sidebar.button("🔍 Prediksi"):
     ax2.grid(True, alpha=0.3)
     st.pyplot(fig2)
 
-    # Insight 3: Patient Benchmarking (bar chart)
+    # Insight 3: Patient Benchmarking
     st.subheader("📊 Insight 3: Patient Benchmarking")
     fig3, ax3 = plt.subplots(figsize=(10, 5))
     x = np.arange(len(top_features))
@@ -139,10 +129,9 @@ if st.sidebar.button("🔍 Prediksi"):
     ax3.legend()
     st.pyplot(fig3)
 
-    # Insight 4: Texture & Smoothness
+    # Insight 4: Texture vs Smoothness
     st.subheader("🧬 Insight 4: Texture vs Smoothness")
     fig4, ax4 = plt.subplots(figsize=(8, 6))
-    # Plot titik mean
     ax4.scatter(mean_benign['texture_mean'], mean_benign['smoothness_mean'],
                 color='#2ecc71', s=100, label='Rata-rata Benign', alpha=0.7)
     ax4.scatter(mean_malignant['texture_mean'], mean_malignant['smoothness_mean'],
@@ -155,7 +144,7 @@ if st.sidebar.button("🔍 Prediksi"):
     ax4.grid(True, alpha=0.3)
     st.pyplot(fig4)
 
-    # Insight 5: Konvergensi (tampilkan metrik dari laporan)
+    # Insight 5: Konvergensi
     st.subheader("📈 Insight 5: Konvergensi Performa Model")
     metrics = {
         'Accuracy': 0.9737,
@@ -170,7 +159,6 @@ if st.sidebar.button("🔍 Prediksi"):
     })
     st.table(metrics_df)
 
-    # Ringkasan model
     st.markdown("---")
     st.subheader("📋 Ringkasan Model")
     st.markdown(f"""
@@ -184,6 +172,5 @@ if st.sidebar.button("🔍 Prediksi"):
 else:
     st.info("👈 Masukkan nilai fitur di sidebar, lalu klik 'Prediksi'.")
 
-# Footer
 st.markdown("---")
 st.caption("Dibuat untuk Final Project Machine Learning — Klasifikasi Kanker Payudara")
